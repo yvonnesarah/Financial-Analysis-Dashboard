@@ -1,65 +1,103 @@
 <!DOCTYPE html>
 <html lang="en-gb">
 <head>
+  <!-- Character encoding for proper text rendering -->
   <meta charset="UTF-8">
+
+  <!-- Ensures responsive layout on mobile devices -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Page title shown in browser tab -->
   <title>Financial Analysis Dashboard</title>
 
+  <!-- External CSS file for styling -->
   <link rel="stylesheet" href="assets/css/styles.css">
 </head>
+
 <body>
 
+<!-- Main container wrapping the entire dashboard -->
 <div class="container">
+
+  <!-- Page heading -->
   <h1>📊 Financial Dashboard</h1>
 
-  <!-- Controls -->
+  <!-- =======================
+       CONTROL PANEL SECTION
+       ======================= -->
   <div class="controls">
 
+    <!-- Dropdown for selecting year filter (populated via JS) -->
     <select id="yearFilter"></select>
 
-    <input id="searchBox" placeholder="Search month (e.g. Jan)" />
-
+    <!-- Dropdown for selecting chart type -->
     <select id="chartType">
       <option value="line">Line Chart</option>
       <option value="bar">Bar Chart</option>
     </select>
 
+    <!-- Button to sort data ascending/descending -->
     <button id="sortBtn">Sort ↕</button>
+
+    <!-- Export data as CSV file -->
     <button id="exportBtn">Export CSV</button>
+
+    <!-- Export data as JSON file -->
     <button id="exportJsonBtn">Export JSON</button>
+
+    <!-- Download chart as image -->
+    <button id="downloadChart">📷 Export Chart</button>
+
+    <!-- Generate AI-powered summary of data -->
+    <button id="aiSummary">🧠 Smart Summary</button>
+
+    <!-- Toggle between light/dark theme -->
     <button id="themeToggle">🌙 Theme</button>
 
   </div>
 
-  <!-- DASHBOARD -->
+  <!-- =======================
+       DASHBOARD METRICS CARDS
+       ======================= -->
   <div class="dashboard">
 
+    <!-- Total number of months in dataset -->
     <div class="card">
       <span class="label">Total Months</span>
       <span id="months" class="value"></span>
     </div>
 
+    <!-- Overall net total value -->
     <div class="card">
       <span class="label">Net Total</span>
       <span id="total" class="value"></span>
     </div>
 
+    <!-- Average monthly change -->
     <div class="card">
       <span class="label">Average Change</span>
       <span id="average" class="value"></span>
     </div>
 
+    <!-- Change compared to previous period -->
+    <div class="card">
+      <span class="label">Change vs Previous</span>
+      <span id="change" class="value"></span>
+    </div>
+
+    <!-- Month with highest performance -->
     <div class="card">
       <span class="label">Best Month</span>
       <span id="bestMonth" class="value"></span>
     </div>
 
+    <!-- Month with lowest performance -->
     <div class="card">
       <span class="label">Worst Month</span>
       <span id="worstMonth" class="value"></span>
     </div>
 
-    <!-- INSIGHTS -->
+    <!-- AI-generated insights section -->
     <div class="card">
       <span class="label">Insights</span>
       <div id="insights"></div>
@@ -67,11 +105,15 @@
 
   </div>
 
+  <!-- Canvas element for rendering Chart.js visualisations -->
   <canvas id="chart"></canvas>
 
 </div>
 
+<!-- Chart.js library for data visualisation -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Custom JavaScript logic for dashboard functionality -->
 <script src="assets/js/script.js"></script>
 
 </body>
