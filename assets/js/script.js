@@ -31,7 +31,12 @@ const finances = [
   ['Jan-2017', 138230], ['Feb-2017', 671099]
 ];
 
-// ===== SETUP =====
+// ================= STATE =================
+let chart;
+let sortAsc = true;
+let chartType = "line";
+
+// ================= INIT =================
 const yearFilter = document.getElementById("yearFilter");
 const years = [...new Set(finances.map(f => f[0].split("-")[1]))];
 
@@ -42,20 +47,43 @@ years.forEach(y => {
   yearFilter.appendChild(opt);
 });
 
+// Theme persistence
+if (localStorage.getItem("theme") === "dark") {
+  document.body.classList.add("dark");
+}
+
+// ================= EVENTS =================
 yearFilter.addEventListener("change", runAnalysis);
 
-let chart;
+document.getElementById("searchBox").addEventListener("input", runAnalysis);
 
-// ===== ANIMATION =====
+document.getElementById("chartType").addEventListener("change", e => {
+  chartType = e.target.value;
+  runAnalysis();
+});
+
+document.getElementById("sortBtn").onclick = () => {
+  sortAsc = !sortAsc;
+  runAnalysis();
+};
+
+document.getElementById("themeToggle").onclick = () => {
+  document.body.classList.toggle("dark");
+  localStorage.setItem(
+    "theme",
+    document.body.classList.contains("dark") ? "dark" : "light"
+  );
+};
+
+// ================= ANIMATION =================
 function animateValue(id, end, duration = 600) {
   const el = document.getElementById(id);
-  let start = 0;
   let startTime = null;
 
   function step(timestamp) {
     if (!startTime) startTime = timestamp;
     let progress = Math.min((timestamp - startTime) / duration, 1);
-    let value = Math.floor(progress * (end - start) + start);
+    let value = Math.floor(progress * end);
 
     el.textContent = `$${value.toLocaleString()}`;
 
@@ -65,26 +93,38 @@ function animateValue(id, end, duration = 600) {
   requestAnimationFrame(step);
 }
 
-// ===== MAIN =====
+// ================= MAIN =================
 function runAnalysis() {
   const selectedYear = yearFilter.value;
+  const search = document.getElementById("searchBox").value.toLowerCase();
 
-  let filtered = finances.filter(f =>
-    selectedYear === "all" || f[0].includes(selectedYear)
+  let filtered = finances.filter(f => {
+    const matchYear = selectedYear === "all" || f[0].includes(selectedYear);
+    const matchSearch = f[0].toLowerCase().includes(search);
+    return matchYear && matchSearch;
+  });
+
+  if (filtered.length === 0) {
+    document.getElementById("insights").innerHTML = "No data found";
+    return;
+  }
+
+  // sort
+  filtered.sort((a, b) =>
+    sortAsc ? a[1] - b[1] : b[1] - a[1]
   );
 
   let netTotal = 0;
   let changes = [];
-
-  let bestMonth = ["", -Infinity];
-  let worstMonth = ["", Infinity];
+  let best = ["", -Infinity];
+  let worst = ["", Infinity];
 
   for (let i = 0; i < filtered.length; i++) {
     let val = filtered[i][1];
     netTotal += val;
 
-    if (val > bestMonth[1]) bestMonth = filtered[i];
-    if (val < worstMonth[1]) worstMonth = filtered[i];
+    if (val > best[1]) best = filtered[i];
+    if (val < worst[1]) worst = filtered[i];
 
     if (i > 0) changes.push(val - filtered[i - 1][1]);
   }
@@ -93,9 +133,17 @@ function runAnalysis() {
     ? changes.reduce((a, b) => a + b, 0) / changes.length
     : 0;
 
-  const forecast = generateForecast(filtered, 6);
-  const movingAvg = movingAverage(filtered, 3);
-  const insights = generateInsights(filtered);
+  let returns = filtered.map((f, i) =>
+    i === 0 ? 0 : f[1] - filtered[i - 1][1]
+  );
+
+  let volatility = Math.sqrt(
+    returns.reduce((a, b) => a + b * b, 0) / returns.length
+  );
+
+  let growthRate =
+    ((filtered[filtered.length - 1][1] - filtered[0][1]) /
+      filtered[0][1]) * 100;
 
   document.getElementById("months").textContent = filtered.length;
 
@@ -103,112 +151,76 @@ function runAnalysis() {
   animateValue("average", avg);
 
   document.getElementById("bestMonth").textContent =
-    `${bestMonth[0]} ($${bestMonth[1].toLocaleString()})`;
+    `${best[0]} ($${best[1].toLocaleString()})`;
 
   document.getElementById("worstMonth").textContent =
-    `${worstMonth[0]} ($${worstMonth[1].toLocaleString()})`;
+    `${worst[0]} ($${worst[1].toLocaleString()})`;
 
-  document.getElementById("insights").innerHTML = insights;
+  document.getElementById("insights").innerHTML =
+    generateInsights(filtered) +
+    `<div>📊 Volatility: ${Math.round(volatility).toLocaleString()}</div>
+     <div>📈 Growth: ${growthRate.toFixed(2)}%</div>`;
 
-  renderChart(filtered, movingAvg, forecast);
+  renderChart(filtered);
 }
 
-// ===== FORECAST =====
-function generateForecast(data, months) {
-  let x = data.map((_, i) => i);
-  let y = data.map(d => d[1]);
-
-  let n = x.length;
-  let slope =
-    (n * x.reduce((a, v, i) => a + v * y[i], 0) -
-      x.reduce((a, b) => a + b, 0) * y.reduce((a, b) => a + b, 0)) /
-    (n * x.reduce((a, v) => a + v * v, 0) -
-      Math.pow(x.reduce((a, b) => a + b, 0), 2));
-
-  let intercept =
-    (y.reduce((a, b) => a + b, 0) -
-      slope * x.reduce((a, b) => a + b, 0)) / n;
-
-  let forecast = [];
-
-  for (let i = 1; i <= months; i++) {
-    forecast.push({
-      label: `F${i}`,
-      value: Math.round(slope * (n + i) + intercept)
-    });
-  }
-
-  return forecast;
-}
-
-// ===== MOVING AVG =====
-function movingAverage(data, size) {
-  return data.map((_, i) => {
-    if (i < size - 1) return null;
-    let slice = data.slice(i - size + 1, i + 1);
-    return slice.reduce((a, d) => a + d[1], 0) / size;
-  });
-}
-
-// ===== INSIGHTS =====
+// ================= INSIGHTS =================
 function generateInsights(data) {
-  let result = [];
+  let out = [];
 
   for (let i = 1; i < data.length; i++) {
     let diff = data[i][1] - data[i - 1][1];
 
-    if (diff < -500000)
-      result.push(`⚠️ Drop in ${data[i][0]}`);
-    if (diff > 500000)
-      result.push(`🚀 Growth in ${data[i][0]}`);
+    if (diff > 600000) out.push(`🚀 Growth in ${data[i][0]}`);
+    if (diff < -600000) out.push(`⚠️ Drop in ${data[i][0]}`);
   }
 
-  return result.length
-    ? result.map(i => `<div>${i}</div>`).join("")
-    : "Stable trend";
+  out.push(data[data.length - 1][1] > data[0][1]
+    ? "📈 Upward trend overall"
+    : "📉 Downward trend overall");
+
+  return out.map(i => `<div>${i}</div>`).join("");
 }
 
-// ===== CHART =====
-function renderChart(data, avg, forecast) {
-  const ctx = document.getElementById("chart");
-
+// ================= CHART =================
+function renderChart(data) {
   if (chart) chart.destroy();
 
-  chart = new Chart(ctx, {
-    type: "line",
+  chart = new Chart(document.getElementById("chart"), {
+    type: chartType,
     data: {
-      labels: [...data.map(d => d[0]), ...forecast.map(f => f.label)],
-      datasets: [
-        {
-          label: "Profit/Loss",
-          data: [...data.map(d => d[1]), ...forecast.map(f => f.value)],
-          tension: 0.3
-        },
-        {
-          label: "Moving Avg",
-          data: [...avg, ...Array(forecast.length).fill(null)],
-          borderDash: [5,5]
-        }
-      ]
+      labels: data.map(d => d[0]),
+      datasets: [{
+        label: "Profit/Loss",
+        data: data.map(d => d[1]),
+        borderWidth: 2
+      }]
     }
   });
 }
 
-// ===== DARK MODE =====
-document.getElementById("themeToggle").onclick = () =>
-  document.body.classList.toggle("dark");
-
-// ===== EXPORT =====
+// ================= EXPORT =================
 document.getElementById("exportBtn").onclick = () => {
   let csv = "Month,Value\n";
   finances.forEach(f => csv += `${f[0]},${f[1]}\n`);
 
-  let blob = new Blob([csv]);
+  let blob = new Blob([csv], { type: "text/csv" });
   let a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "data.csv";
   a.click();
 };
 
-// INIT
+document.getElementById("exportJsonBtn").onclick = () => {
+  let blob = new Blob([JSON.stringify(finances, null, 2)], {
+    type: "application/json"
+  });
+
+  let a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "data.json";
+  a.click();
+};
+
+// ================= START =================
 runAnalysis();
