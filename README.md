@@ -94,6 +94,7 @@ User Experience Features
 
 ## 🧠 Advanced Features (Professional Level)
 Data Persistence
+
 Saves user preferences:
 * Selected year filter ✅
 * Chart type ✅
