@@ -54,8 +54,11 @@ button:hover {
   font-weight: bold;
 }
 
-.positive { color: green; }
-.negative { color: red; }
+#insights {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
 
 /* Chart */
 canvas {
