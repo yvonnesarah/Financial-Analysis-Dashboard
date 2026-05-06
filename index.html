@@ -2,16 +2,15 @@
 <html lang="en-gb">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>Financial Analysis Dashboard</title>
-  <link rel="stylesheet" href="assets/css/styles.css" />
+
+  <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 <body>
 
 <div class="container">
-  <h1>📊 Financial Analysis</h1>
+  <h1>📊 Financial Dashboard</h1>
 
   <!-- Controls -->
   <div class="controls">
@@ -20,24 +19,47 @@
     </select>
 
     <button id="exportBtn">Export CSV</button>
-    <button id="themeToggle">🌙 Toggle Theme</button>
+    <button id="themeToggle">🌙 Theme</button>
   </div>
 
-  <!-- KPI Cards -->
-  <div class="card"><span class="label">Total Months:</span><span id="months"></span></div>
-  <div class="card"><span class="label">Net Total:</span><span id="total"></span></div>
-  <div class="card"><span class="label">Average Change:</span><span id="average"></span></div>
-  <div class="card"><span class="label">Best Month:</span><span id="bestMonth"></span></div>
-  <div class="card"><span class="label">Worst Month:</span><span id="worstMonth"></span></div>
+  <!-- Dashboard Grid -->
+  <div class="dashboard">
 
-  <!-- AI Insights -->
-  <div class="card">
-    <span class="label">AI Insights:</span>
-    <div id="insights"></div>
+    <div class="card">
+      <span class="label">Total Months</span>
+      <span id="months" class="value"></span>
+    </div>
+
+    <div class="card">
+      <span class="label">Net Total</span>
+      <span id="total" class="value"></span>
+    </div>
+
+    <div class="card">
+      <span class="label">Average Change</span>
+      <span id="average" class="value"></span>
+    </div>
+
+    <div class="card">
+      <span class="label">Best Month</span>
+      <span id="bestMonth" class="value"></span>
+    </div>
+
+    <div class="card">
+      <span class="label">Worst Month</span>
+      <span id="worstMonth" class="value"></span>
+    </div>
+
+    <div class="card">
+      <span class="label">AI Insights</span>
+      <div id="insights"></div>
+    </div>
+
   </div>
 
   <!-- Chart -->
   <canvas id="chart"></canvas>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
