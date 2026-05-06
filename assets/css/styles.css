@@ -1,9 +1,12 @@
+/* ===== GLOBAL RESET ===== */
+/* Ensures consistent box model and removes default spacing */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+/* ===== BASE PAGE STYLING ===== */
 body {
   font-family: -apple-system, system-ui, sans-serif;
   background: linear-gradient(135deg, #eef2f7, #dfe9f3);
@@ -14,6 +17,7 @@ body {
 }
 
 /* ===== MAIN CONTAINER ===== */
+/* Central card-like layout wrapper */
 .container {
   max-width: 1100px;
   margin: auto;
@@ -25,7 +29,7 @@ body {
   animation: fadeIn 0.6s ease;
 }
 
-/* ===== TITLE ===== */
+/* ===== PAGE TITLE ===== */
 h1 {
   text-align: center;
   margin-bottom: 18px;
@@ -34,6 +38,7 @@ h1 {
 }
 
 /* ===== CONTROLS BAR ===== */
+/* Button + select grouping layout */
 .controls {
   display: flex;
   gap: 10px;
@@ -42,6 +47,7 @@ h1 {
   justify-content: center;
 }
 
+/* ===== BUTTONS & DROPDOWNS ===== */
 button, select {
   padding: 10px 14px;
   border-radius: 12px;
@@ -54,16 +60,19 @@ button, select {
   box-shadow: 0 6px 14px rgba(37, 99, 235, 0.2);
 }
 
+/* Hover interaction effect */
 button:hover, select:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 20px rgba(37, 99, 235, 0.25);
 }
 
+/* Click feedback */
 button:active {
   transform: scale(0.97);
 }
 
-/* ===== DASHBOARD GRID (MAIN ALIGNMENT FIX) ===== */
+/* ===== DASHBOARD GRID ===== */
+/* Responsive KPI/card layout */
 .dashboard {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -71,7 +80,8 @@ button:active {
   margin-top: 10px;
 }
 
-/* ===== CARDS (FINANCIAL KPI STYLE) ===== */
+/* ===== DATA CARDS ===== */
+/* Main KPI/financial metric cards */
 .card {
   background: #ffffff;
   padding: 16px 18px;
@@ -88,13 +98,13 @@ button:active {
   border: 1px solid rgba(0,0,0,0.04);
 }
 
-/* hover lift = app feel */
+/* Card hover lift effect */
 .card:hover {
   transform: translateY(-6px);
   box-shadow: 0 16px 32px rgba(0,0,0,0.12);
 }
 
-/* label/value hierarchy */
+/* Card text styles */
 .label {
   font-size: 0.85rem;
   opacity: 0.65;
@@ -106,7 +116,8 @@ button:active {
   font-weight: 700;
 }
 
-/* insights block */
+/* ===== INSIGHTS SECTION ===== */
+/* Text-based analytics or summaries */
 #insights {
   font-size: 13.5px;
   line-height: 1.5;
@@ -116,6 +127,7 @@ button:active {
 }
 
 /* ===== CHART AREA ===== */
+/* Styling for graphs/canvas output */
 canvas {
   margin-top: 22px;
   padding: 10px;
@@ -125,48 +137,58 @@ canvas {
   animation: fadeIn 0.8s ease;
 }
 
-/* ===== POSITIVE / NEGATIVE STATES ===== */
+/* ===== STATUS COLORS ===== */
+/* Positive values (profit, growth, etc.) */
 .positive {
   color: #16a34a;
   font-weight: 600;
 }
 
+/* Negative values (loss, decline, etc.) */
 .negative {
   color: #dc2626;
   font-weight: 600;
 }
 
-/* ===== DARK MODE (PROFESSIONAL FINTECH STYLE) ===== */
+/* ===== DARK MODE THEME ===== */
+/* Fintech-style dark UI */
 .dark {
   background: linear-gradient(135deg, #0f172a, #1e293b);
   color: #e5e7eb;
 }
 
+/* Container in dark mode */
 .dark .container {
   background: rgba(30, 41, 59, 0.92);
 }
 
+/* Cards in dark mode */
 .dark .card {
   background: #334155;
   border: 1px solid rgba(255,255,255,0.06);
   box-shadow: 0 10px 24px rgba(0,0,0,0.3);
 }
 
+/* Chart dark styling */
 .dark canvas {
   background: #1e293b;
 }
 
+/* Controls in dark mode */
 .dark button,
 .dark select {
   background: #3b82f6;
 }
 
 /* ===== ANIMATIONS ===== */
+
+/* Fade-in entrance */
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(0.98); }
   to { opacity: 1; transform: scale(1); }
 }
 
+/* Slide-up card animation */
 @keyframes slideUp {
   from {
     opacity: 0;
@@ -178,7 +200,8 @@ canvas {
   }
 }
 
-/* ===== MOBILE (APP-LIKE STACKING) ===== */
+/* ===== MOBILE RESPONSIVE ===== */
+/* Stack layout for small screens */
 @media (max-width: 600px) {
   .container {
     padding: 16px;
