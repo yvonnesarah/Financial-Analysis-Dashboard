@@ -54,13 +54,12 @@ if (localStorage.getItem("theme") === "dark") {
 
 // ================= EVENTS =================
 yearFilter.addEventListener("change", runAnalysis);
-
 document.getElementById("searchBox").addEventListener("input", runAnalysis);
 
-document.getElementById("chartType").addEventListener("change", e => {
+document.getElementById("chartType").onchange = e => {
   chartType = e.target.value;
   runAnalysis();
-});
+};
 
 document.getElementById("sortBtn").onclick = () => {
   sortAsc = !sortAsc;
@@ -75,79 +74,38 @@ document.getElementById("themeToggle").onclick = () => {
   );
 };
 
-// ================= ANIMATION =================
-function animateValue(id, end, duration = 600) {
-  const el = document.getElementById(id);
-  let startTime = null;
-
-  function step(timestamp) {
-    if (!startTime) startTime = timestamp;
-    let progress = Math.min((timestamp - startTime) / duration, 1);
-    let value = Math.floor(progress * end);
-
-    el.textContent = `$${value.toLocaleString()}`;
-
-    if (progress < 1) requestAnimationFrame(step);
-  }
-
-  requestAnimationFrame(step);
-}
-
-// ================= MAIN =================
+// ================= ANALYSIS =================
 function runAnalysis() {
-  const selectedYear = yearFilter.value;
+  const year = yearFilter.value;
   const search = document.getElementById("searchBox").value.toLowerCase();
 
-  let filtered = finances.filter(f => {
-    const matchYear = selectedYear === "all" || f[0].includes(selectedYear);
-    const matchSearch = f[0].toLowerCase().includes(search);
-    return matchYear && matchSearch;
-  });
+  let filtered = finances.filter(f =>
+    (year === "all" || f[0].includes(year)) &&
+    f[0].toLowerCase().includes(search)
+  );
 
-  if (filtered.length === 0) {
-    document.getElementById("insights").innerHTML = "No data found";
-    return;
-  }
+  if (filtered.length === 0) return;
 
-  // sort
   filtered.sort((a, b) =>
     sortAsc ? a[1] - b[1] : b[1] - a[1]
   );
 
-  let netTotal = 0;
-  let changes = [];
+  let total = 0;
   let best = ["", -Infinity];
   let worst = ["", Infinity];
 
   for (let i = 0; i < filtered.length; i++) {
-    let val = filtered[i][1];
-    netTotal += val;
+    let v = filtered[i][1];
+    total += v;
 
-    if (val > best[1]) best = filtered[i];
-    if (val < worst[1]) worst = filtered[i];
-
-    if (i > 0) changes.push(val - filtered[i - 1][1]);
+    if (v > best[1]) best = filtered[i];
+    if (v < worst[1]) worst = filtered[i];
   }
 
-  let avg = changes.length
-    ? changes.reduce((a, b) => a + b, 0) / changes.length
-    : 0;
-
-  let returns = filtered.map((f, i) =>
-    i === 0 ? 0 : f[1] - filtered[i - 1][1]
-  );
-
-  let volatility = Math.sqrt(
-    returns.reduce((a, b) => a + b * b, 0) / returns.length
-  );
-
-  let growthRate =
-    ((filtered[filtered.length - 1][1] - filtered[0][1]) /
-      filtered[0][1]) * 100;
+  let avg = total / filtered.length;
 
   document.getElementById("months").textContent = filtered.length;
-
-  animateValue("total", netTotal);
+  animateValue("total", total);
   animateValue("average", avg);
 
   document.getElementById("bestMonth").textContent =
@@ -157,29 +115,105 @@ function runAnalysis() {
     `${worst[0]} ($${worst[1].toLocaleString()})`;
 
   document.getElementById("insights").innerHTML =
-    generateInsights(filtered) +
-    `<div>📊 Volatility: ${Math.round(volatility).toLocaleString()}</div>
-     <div>📈 Growth: ${growthRate.toFixed(2)}%</div>`;
+    generateInsights(filtered);
 
   renderChart(filtered);
 }
 
 // ================= INSIGHTS =================
 function generateInsights(data) {
-  let out = [];
+  let insights = [];
 
-  for (let i = 1; i < data.length; i++) {
-    let diff = data[i][1] - data[i - 1][1];
+  // ================= BASIC TREND =================
+  let start = data[0][1];
+  let end = data[data.length - 1][1];
+  let trendStrength = ((end - start) / Math.abs(start)) * 100;
 
-    if (diff > 600000) out.push(`🚀 Growth in ${data[i][0]}`);
-    if (diff < -600000) out.push(`⚠️ Drop in ${data[i][0]}`);
+  insights.push(
+    trendStrength > 0
+      ? `📈 Upward trend: +${trendStrength.toFixed(2)}% overall growth`
+      : `📉 Downward trend: ${trendStrength.toFixed(2)}% decline`
+  );
+
+  // ================= VOLATILITY =================
+  let changes = data.map((d, i) =>
+    i === 0 ? 0 : d[1] - data[i - 1][1]
+  );
+
+  let volatility = Math.sqrt(
+    changes.reduce((a, b) => a + b * b, 0) / changes.length
+  );
+
+  let risk =
+    volatility > 800000 ? "🔴 High risk"
+    : volatility > 400000 ? "🟠 Medium risk"
+    : "🟢 Low risk";
+
+  insights.push(`⚠️ Risk level: ${risk}`);
+
+  // ================= CONSISTENCY =================
+  let positive = changes.filter(c => c > 0).length;
+  let consistency = (positive / changes.length) * 100;
+
+  insights.push(`📊 Positive months: ${consistency.toFixed(1)}% consistency`);
+
+  // ================= BEST / WORST STREAK =================
+  let bestStreak = 0, worstStreak = 0;
+  let currentBest = 0, currentWorst = 0;
+
+  for (let i = 1; i < changes.length; i++) {
+    if (changes[i] > 0) {
+      currentBest++;
+      currentWorst = 0;
+    } else if (changes[i] < 0) {
+      currentWorst++;
+      currentBest = 0;
+    }
+
+    bestStreak = Math.max(bestStreak, currentBest);
+    worstStreak = Math.max(worstStreak, currentWorst);
   }
 
-  out.push(data[data.length - 1][1] > data[0][1]
-    ? "📈 Upward trend overall"
-    : "📉 Downward trend overall");
+  insights.push(`🔥 Longest gain streak: ${bestStreak} months`);
+  insights.push(`💥 Longest loss streak: ${worstStreak} months`);
 
-  return out.map(i => `<div>${i}</div>`).join("");
+  // ================= MOMENTUM =================
+  let recent = data.slice(-6).map(d => d[1]);
+  let earlier = data.slice(0, 6).map(d => d[1]);
+
+  let recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
+  let earlyAvg = earlier.reduce((a, b) => a + b, 0) / earlier.length;
+
+  let momentum = ((recentAvg - earlyAvg) / earlyAvg) * 100;
+
+  insights.push(
+    momentum > 0
+      ? `⚡ Positive momentum: +${momentum.toFixed(2)}% (recent vs early)`
+      : `⚡ Negative momentum: ${momentum.toFixed(2)}% slowdown`
+  );
+
+  // ================= DRAWDOWN =================
+  let peak = -Infinity;
+  let maxDrawdown = 0;
+
+  for (let i = 0; i < data.length; i++) {
+    peak = Math.max(peak, data[i][1]);
+    let drawdown = ((peak - data[i][1]) / peak) * 100;
+    maxDrawdown = Math.max(maxDrawdown, drawdown);
+  }
+
+  insights.push(`📉 Max drawdown: ${maxDrawdown.toFixed(2)}%`);
+
+  // ================= SUMMARY =================
+  insights.push(
+    trendStrength > 20 && consistency > 60
+      ? "🧠 Summary: Strong, stable growth pattern"
+      : trendStrength < -20 && volatility > 600000
+      ? "🧠 Summary: High-risk declining market"
+      : "🧠 Summary: Mixed signals, moderate uncertainty"
+  );
+
+  return insights.map(i => `<div>${i}</div>`).join("");
 }
 
 // ================= CHART =================
@@ -191,12 +225,27 @@ function renderChart(data) {
     data: {
       labels: data.map(d => d[0]),
       datasets: [{
-        label: "Profit/Loss",
+        label: "Value",
         data: data.map(d => d[1]),
         borderWidth: 2
       }]
     }
   });
+}
+
+// ================= ANIMATION =================
+function animateValue(id, end, duration = 600) {
+  const el = document.getElementById(id);
+  let startTime = null;
+
+  function step(t) {
+    if (!startTime) startTime = t;
+    let p = Math.min((t - startTime) / duration, 1);
+    el.textContent = `$${Math.floor(p * end).toLocaleString()}`;
+    if (p < 1) requestAnimationFrame(step);
+  }
+
+  requestAnimationFrame(step);
 }
 
 // ================= EXPORT =================
@@ -212,7 +261,7 @@ document.getElementById("exportBtn").onclick = () => {
 };
 
 document.getElementById("exportJsonBtn").onclick = () => {
-  let blob = new Blob([JSON.stringify(finances, null, 2)], {
+  let blob = new Blob([JSON.stringify(finances)], {
     type: "application/json"
   });
 
