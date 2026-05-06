@@ -1,3 +1,4 @@
+// ================= DATA =================
 const finances = [
   ['Jan-2010', 867884], ['Feb-2010', 984655], ['Mar-2010', 322013],
   ['Apr-2010', -69417], ['May-2010', 310503], ['Jun-2010', 522857],
@@ -30,10 +31,11 @@ const finances = [
   ['Jan-2017', 138230], ['Feb-2017', 671099]
 ];
 
-// Populate year dropdown
+// ================= SETUP =================
 const yearFilter = document.getElementById("yearFilter");
-const years = [...new Set(finances.map(f => f[0].split("-")[1]))];
 
+// Populate dropdown
+const years = [...new Set(finances.map(f => f[0].split("-")[1]))];
 years.forEach(y => {
   const option = document.createElement("option");
   option.value = y;
@@ -45,7 +47,7 @@ yearFilter.addEventListener("change", runAnalysis);
 
 let chart;
 
-// Main analysis function
+// ================= MAIN =================
 function runAnalysis() {
   const selectedYear = yearFilter.value;
 
@@ -53,12 +55,9 @@ function runAnalysis() {
     selectedYear === "all" || f[0].includes(selectedYear)
   );
 
-  let totalMonths = filtered.length;
   let netTotal = 0;
   let changes = [];
 
-  let greatestIncrease = ["", -Infinity];
-  let greatestDecrease = ["", Infinity];
   let bestMonth = ["", -Infinity];
   let worstMonth = ["", Infinity];
 
@@ -70,14 +69,7 @@ function runAnalysis() {
     if (value < worstMonth[1]) worstMonth = filtered[i];
 
     if (i > 0) {
-      let change = value - filtered[i - 1][1];
-      changes.push(change);
-
-      if (change > greatestIncrease[1])
-        greatestIncrease = [filtered[i][0], change];
-
-      if (change < greatestDecrease[1])
-        greatestDecrease = [filtered[i][0], change];
+      changes.push(value - filtered[i - 1][1]);
     }
   }
 
@@ -85,28 +77,95 @@ function runAnalysis() {
     ? changes.reduce((a, b) => a + b, 0) / changes.length
     : 0;
 
-  // Update UI
-  document.getElementById("months").textContent = totalMonths;
+  const forecast = generateForecast(filtered, 6);
+  const movingAvg = calculateMovingAverage(filtered, 3);
+  const insights = generateInsights(filtered);
+
+  document.getElementById("months").textContent = filtered.length;
   document.getElementById("total").textContent = `$${netTotal.toLocaleString()}`;
   document.getElementById("average").textContent = `$${avg.toFixed(2)}`;
-
-  document.getElementById("increase").textContent =
-    `${greatestIncrease[0]} ($${greatestIncrease[1].toLocaleString()})`;
-
-  document.getElementById("decrease").textContent =
-    `${greatestDecrease[0]} ($${greatestDecrease[1].toLocaleString()})`;
-
   document.getElementById("bestMonth").textContent =
     `${bestMonth[0]} ($${bestMonth[1].toLocaleString()})`;
-
   document.getElementById("worstMonth").textContent =
     `${worstMonth[0]} ($${worstMonth[1].toLocaleString()})`;
 
-  renderChart(filtered);
+  document.getElementById("insights").innerHTML = insights;
+
+  renderChart(filtered, movingAvg, forecast);
 }
 
-// Chart rendering
-function renderChart(data) {
+// ================= FORECAST =================
+function generateForecast(data, monthsAhead) {
+  let x = data.map((_, i) => i);
+  let y = data.map(d => d[1]);
+
+  let n = x.length;
+  let sumX = x.reduce((a, b) => a + b, 0);
+  let sumY = y.reduce((a, b) => a + b, 0);
+  let sumXY = x.reduce((acc, val, i) => acc + val * y[i], 0);
+  let sumXX = x.reduce((acc, val) => acc + val * val, 0);
+
+  let slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+  let intercept = (sumY - slope * sumX) / n;
+
+  let forecast = [];
+
+  for (let i = 1; i <= monthsAhead; i++) {
+    let nextX = n + i;
+    let value = slope * nextX + intercept;
+
+    forecast.push({
+      label: `Forecast ${i}`,
+      value: Math.round(value)
+    });
+  }
+
+  return forecast;
+}
+
+// ================= MOVING AVG =================
+function calculateMovingAverage(data, windowSize) {
+  let result = [];
+
+  for (let i = 0; i < data.length; i++) {
+    if (i < windowSize - 1) {
+      result.push(null);
+    } else {
+      let slice = data.slice(i - windowSize + 1, i + 1);
+      let avg =
+        slice.reduce((sum, d) => sum + d[1], 0) / windowSize;
+      result.push(avg);
+    }
+  }
+
+  return result;
+}
+
+// ================= AI INSIGHTS =================
+function generateInsights(data) {
+  let insights = [];
+
+  for (let i = 1; i < data.length; i++) {
+    let change = data[i][1] - data[i - 1][1];
+
+    if (change < -500000) {
+      insights.push(`⚠️ Drop in ${data[i][0]} — possible expense spike.`);
+    }
+
+    if (change > 500000) {
+      insights.push(`🚀 Growth in ${data[i][0]} — strong revenue.`);
+    }
+  }
+
+  if (insights.length === 0) {
+    insights.push("Stable financial trend.");
+  }
+
+  return insights.map(i => `<div>${i}</div>`).join("");
+}
+
+// ================= CHART =================
+function renderChart(data, movingAvg, forecast) {
   const ctx = document.getElementById("chart");
 
   if (chart) chart.destroy();
@@ -114,17 +173,35 @@ function renderChart(data) {
   chart = new Chart(ctx, {
     type: "line",
     data: {
-      labels: data.map(d => d[0]),
-      datasets: [{
-        label: "Profit/Loss",
-        data: data.map(d => d[1]),
-        tension: 0.3
-      }]
+      labels: [
+        ...data.map(d => d[0]),
+        ...forecast.map(f => f.label)
+      ],
+      datasets: [
+        {
+          label: "Profit/Loss",
+          data: [
+            ...data.map(d => d[1]),
+            ...forecast.map(f => f.value)
+          ],
+          tension: 0.3
+        },
+        {
+          label: "Moving Average",
+          data: [...movingAvg, ...Array(forecast.length).fill(null)],
+          borderDash: [5, 5]
+        }
+      ]
     }
   });
 }
 
-// Export CSV
+// ================= DARK MODE =================
+document.getElementById("themeToggle").addEventListener("click", () => {
+  document.body.classList.toggle("dark");
+});
+
+// ================= EXPORT =================
 document.getElementById("exportBtn").addEventListener("click", () => {
   let csv = "Month,Profit/Loss\n";
 
@@ -139,11 +216,6 @@ document.getElementById("exportBtn").addEventListener("click", () => {
   a.href = url;
   a.download = "financials.csv";
   a.click();
-});
-
-// Dark mode toggle
-document.getElementById("themeToggle").addEventListener("click", () => {
-  document.body.classList.toggle("dark");
 });
 
 // Initial run
