@@ -14,15 +14,24 @@
 
   <!-- Controls -->
   <div class="controls">
-    <select id="yearFilter">
-      <option value="all">All Years</option>
+
+    <select id="yearFilter"></select>
+
+    <input id="searchBox" placeholder="Search month (e.g. Jan)" />
+
+    <select id="chartType">
+      <option value="line">Line Chart</option>
+      <option value="bar">Bar Chart</option>
     </select>
 
+    <button id="sortBtn">Sort ↕</button>
     <button id="exportBtn">Export CSV</button>
+    <button id="exportJsonBtn">Export JSON</button>
     <button id="themeToggle">🌙 Theme</button>
+
   </div>
 
-  <!-- Dashboard Grid -->
+  <!-- Dashboard -->
   <div class="dashboard">
 
     <div class="card">
@@ -57,7 +66,6 @@
 
   </div>
 
-  <!-- Chart -->
   <canvas id="chart"></canvas>
 
 </div>
