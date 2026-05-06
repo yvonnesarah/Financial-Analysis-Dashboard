@@ -31,23 +31,41 @@ const finances = [
   ['Jan-2017', 138230], ['Feb-2017', 671099]
 ];
 
-// ================= SETUP =================
+// ===== SETUP =====
 const yearFilter = document.getElementById("yearFilter");
-
-// Populate dropdown
 const years = [...new Set(finances.map(f => f[0].split("-")[1]))];
+
 years.forEach(y => {
-  const option = document.createElement("option");
-  option.value = y;
-  option.textContent = y;
-  yearFilter.appendChild(option);
+  let opt = document.createElement("option");
+  opt.value = y;
+  opt.textContent = y;
+  yearFilter.appendChild(opt);
 });
 
 yearFilter.addEventListener("change", runAnalysis);
 
 let chart;
 
-// ================= MAIN =================
+// ===== ANIMATION =====
+function animateValue(id, end, duration = 600) {
+  const el = document.getElementById(id);
+  let start = 0;
+  let startTime = null;
+
+  function step(timestamp) {
+    if (!startTime) startTime = timestamp;
+    let progress = Math.min((timestamp - startTime) / duration, 1);
+    let value = Math.floor(progress * (end - start) + start);
+
+    el.textContent = `$${value.toLocaleString()}`;
+
+    if (progress < 1) requestAnimationFrame(step);
+  }
+
+  requestAnimationFrame(step);
+}
+
+// ===== MAIN =====
 function runAnalysis() {
   const selectedYear = yearFilter.value;
 
@@ -62,15 +80,13 @@ function runAnalysis() {
   let worstMonth = ["", Infinity];
 
   for (let i = 0; i < filtered.length; i++) {
-    let value = filtered[i][1];
-    netTotal += value;
+    let val = filtered[i][1];
+    netTotal += val;
 
-    if (value > bestMonth[1]) bestMonth = filtered[i];
-    if (value < worstMonth[1]) worstMonth = filtered[i];
+    if (val > bestMonth[1]) bestMonth = filtered[i];
+    if (val < worstMonth[1]) worstMonth = filtered[i];
 
-    if (i > 0) {
-      changes.push(value - filtered[i - 1][1]);
-    }
+    if (i > 0) changes.push(val - filtered[i - 1][1]);
   }
 
   let avg = changes.length
@@ -78,14 +94,17 @@ function runAnalysis() {
     : 0;
 
   const forecast = generateForecast(filtered, 6);
-  const movingAvg = calculateMovingAverage(filtered, 3);
+  const movingAvg = movingAverage(filtered, 3);
   const insights = generateInsights(filtered);
 
   document.getElementById("months").textContent = filtered.length;
-  document.getElementById("total").textContent = `$${netTotal.toLocaleString()}`;
-  document.getElementById("average").textContent = `$${avg.toFixed(2)}`;
+
+  animateValue("total", netTotal);
+  animateValue("average", avg);
+
   document.getElementById("bestMonth").textContent =
     `${bestMonth[0]} ($${bestMonth[1].toLocaleString()})`;
+
   document.getElementById("worstMonth").textContent =
     `${worstMonth[0]} ($${worstMonth[1].toLocaleString()})`;
 
@@ -94,78 +113,63 @@ function runAnalysis() {
   renderChart(filtered, movingAvg, forecast);
 }
 
-// ================= FORECAST =================
-function generateForecast(data, monthsAhead) {
+// ===== FORECAST =====
+function generateForecast(data, months) {
   let x = data.map((_, i) => i);
   let y = data.map(d => d[1]);
 
   let n = x.length;
-  let sumX = x.reduce((a, b) => a + b, 0);
-  let sumY = y.reduce((a, b) => a + b, 0);
-  let sumXY = x.reduce((acc, val, i) => acc + val * y[i], 0);
-  let sumXX = x.reduce((acc, val) => acc + val * val, 0);
+  let slope =
+    (n * x.reduce((a, v, i) => a + v * y[i], 0) -
+      x.reduce((a, b) => a + b, 0) * y.reduce((a, b) => a + b, 0)) /
+    (n * x.reduce((a, v) => a + v * v, 0) -
+      Math.pow(x.reduce((a, b) => a + b, 0), 2));
 
-  let slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-  let intercept = (sumY - slope * sumX) / n;
+  let intercept =
+    (y.reduce((a, b) => a + b, 0) -
+      slope * x.reduce((a, b) => a + b, 0)) / n;
 
   let forecast = [];
 
-  for (let i = 1; i <= monthsAhead; i++) {
-    let nextX = n + i;
-    let value = slope * nextX + intercept;
-
+  for (let i = 1; i <= months; i++) {
     forecast.push({
-      label: `Forecast ${i}`,
-      value: Math.round(value)
+      label: `F${i}`,
+      value: Math.round(slope * (n + i) + intercept)
     });
   }
 
   return forecast;
 }
 
-// ================= MOVING AVG =================
-function calculateMovingAverage(data, windowSize) {
+// ===== MOVING AVG =====
+function movingAverage(data, size) {
+  return data.map((_, i) => {
+    if (i < size - 1) return null;
+    let slice = data.slice(i - size + 1, i + 1);
+    return slice.reduce((a, d) => a + d[1], 0) / size;
+  });
+}
+
+// ===== INSIGHTS =====
+function generateInsights(data) {
   let result = [];
 
-  for (let i = 0; i < data.length; i++) {
-    if (i < windowSize - 1) {
-      result.push(null);
-    } else {
-      let slice = data.slice(i - windowSize + 1, i + 1);
-      let avg =
-        slice.reduce((sum, d) => sum + d[1], 0) / windowSize;
-      result.push(avg);
-    }
-  }
-
-  return result;
-}
-
-// ================= AI INSIGHTS =================
-function generateInsights(data) {
-  let insights = [];
-
   for (let i = 1; i < data.length; i++) {
-    let change = data[i][1] - data[i - 1][1];
+    let diff = data[i][1] - data[i - 1][1];
 
-    if (change < -500000) {
-      insights.push(`⚠️ Drop in ${data[i][0]} — possible expense spike.`);
-    }
-
-    if (change > 500000) {
-      insights.push(`🚀 Growth in ${data[i][0]} — strong revenue.`);
-    }
+    if (diff < -500000)
+      result.push(`⚠️ Drop in ${data[i][0]}`);
+    if (diff > 500000)
+      result.push(`🚀 Growth in ${data[i][0]}`);
   }
 
-  if (insights.length === 0) {
-    insights.push("Stable financial trend.");
-  }
-
-  return insights.map(i => `<div>${i}</div>`).join("");
+  return result.length
+    ? result.map(i => `<div>${i}</div>`).join("")
+    : "Stable trend";
 }
 
-// ================= CHART =================
-function renderChart(data, movingAvg, forecast) {
+// ===== CHART =====
+function renderChart(data, avg, forecast) {
   const ctx = document.getElementById("chart");
 
   if (chart) chart.destroy();
@@ -173,50 +177,38 @@ function renderChart(data, movingAvg, forecast) {
   chart = new Chart(ctx, {
     type: "line",
     data: {
-      labels: [
-        ...data.map(d => d[0]),
-        ...forecast.map(f => f.label)
-      ],
+      labels: [...data.map(d => d[0]), ...forecast.map(f => f.label)],
       datasets: [
         {
           label: "Profit/Loss",
-          data: [
-            ...data.map(d => d[1]),
-            ...forecast.map(f => f.value)
-          ],
+          data: [...data.map(d => d[1]), ...forecast.map(f => f.value)],
           tension: 0.3
         },
         {
-          label: "Moving Average",
-          data: [...movingAvg, ...Array(forecast.length).fill(null)],
-          borderDash: [5, 5]
+          label: "Moving Avg",
+          data: [...avg, ...Array(forecast.length).fill(null)],
+          borderDash: [5,5]
         }
       ]
     }
   });
 }
 
-// ================= DARK MODE =================
-document.getElementById("themeToggle").addEventListener("click", () => {
+// ===== DARK MODE =====
+document.getElementById("themeToggle").onclick = () =>
   document.body.classList.toggle("dark");
-});
 
-// ================= EXPORT =================
-document.getElementById("exportBtn").addEventListener("click", () => {
-  let csv = "Month,Profit/Loss\n";
+// ===== EXPORT =====
+document.getElementById("exportBtn").onclick = () => {
+  let csv = "Month,Value\n";
+  finances.forEach(f => csv += `${f[0]},${f[1]}\n`);
 
-  finances.forEach(f => {
-    csv += `${f[0]},${f[1]}\n`;
-  });
-
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "financials.csv";
+  let blob = new Blob([csv]);
+  let a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "data.csv";
   a.click();
-});
+};
 
-// Initial run
+// INIT
 runAnalysis();
